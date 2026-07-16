@@ -87,7 +87,7 @@ with tabs[2]:
         st.info(f"PA2 tiết kiệm hơn {i1-i2:,.0f} đồng tiền lãi.")
 
 with tabs[3]:
-income=st.number_input("Thu nhập/tháng",1000000,500000000,30000000,1000000)
+    income=st.number_input("Thu nhập/tháng",1000000,500000000,30000000,1000000)
     expense=st.number_input("Chi phí sinh hoạt",0,500000000,10000000,1000000)
     other=st.number_input("Khoản trả nợ khác",0,500000000,0,1000000)
     monthly=df.iloc[0]["Tổng trả"]
