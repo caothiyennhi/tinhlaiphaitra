@@ -1,106 +1,298 @@
-st.subheader("📊 So sánh hai phương thức vay")
+import streamlit as st
+import pandas as pd
 
-# =============================
-# TÍNH DƯ NỢ GIẢM DẦN
-# =============================
+st.set_page_config(
+    page_title="Smart Loan Advisor",
+    page_icon="🏦",
+    layout="wide"
+)
 
-goc_thang = so_tien / thoi_han
-du_no = so_tien
-tong_lai_giam = 0
+st.title("🏦 SMART LOAN ADVISOR")
+st.caption("Ứng dụng tính khoản vay và tư vấn phương thức trả nợ tối ưu")
 
-for i in range(thoi_han):
-    lai = du_no * lai_thang
-    tong_lai_giam += lai
-    du_no -= goc_thang
+# ==================================
+# NHẬP THÔNG TIN
+# ==================================
 
+st.sidebar.header("Thông tin khoản vay")
 
-# =============================
-# TÍNH TRẢ GÓP ĐỀU
-# =============================
+so_tien = st.sidebar.number_input(
+    "Số tiền vay (VNĐ)",
+    min_value=1000000,
+    value=300000000,
+    step=1000000
+)
 
-tien_tra = so_tien * lai_thang * (1 + lai_thang) ** thoi_han
-tien_tra /= ((1 + lai_thang) ** thoi_han - 1)
+thoi_han = st.sidebar.slider(
+    "Thời hạn vay (tháng)",
+    6,
+    360,
+    60
+)
 
-du_no = so_tien
-tong_lai_deu = 0
-
-for i in range(thoi_han):
-    lai = du_no * lai_thang
-    goc = tien_tra - lai
-    tong_lai_deu += lai
-    du_no -= goc
-
-
-# =============================
-# BẢNG SO SÁNH
-# =============================
-
-bang_ss = pd.DataFrame({
-    "Phương thức": [
-        "Dư nợ giảm dần",
-        "Trả góp đều"
-    ],
-    "Tổng tiền lãi (VNĐ)": [
-        round(tong_lai_giam),
-        round(tong_lai_deu)
-    ],
-    "Tổng thanh toán (VNĐ)": [
-        round(so_tien + tong_lai_giam),
-        round(so_tien + tong_lai_deu)
+muc_dich = st.sidebar.selectbox(
+    "Mục đích vay",
+    [
+        "Mua nhà",
+        "Mua ô tô",
+        "Kinh doanh",
+        "Tiêu dùng",
+        "Du học"
     ]
-})
+)
 
-st.dataframe(bang_ss, use_container_width=True)
+# Lãi suất theo mục đích
 
-# =============================
-# HIỂN THỊ METRIC
-# =============================
+lai_suat_dict = {
+    "Mua nhà":6.8,
+    "Mua ô tô":7.5,
+    "Kinh doanh":8.5,
+    "Tiêu dùng":11,
+    "Du học":7
+}
 
-col1, col2 = st.columns(2)
+lai_suat = lai_suat_dict[muc_dich]
 
-with col1:
+st.sidebar.success(f"Lãi suất áp dụng: {lai_suat}%/năm")
+
+lai_thang = lai_suat/100/12
+
+# ==================================
+# HÀM DƯ NỢ GIẢM DẦN
+# ==================================
+
+def du_no_giam_dan():
+
+    bang=[]
+
+    du_no=so_tien
+
+    goc=so_tien/thoi_han
+
+    tong_lai=0
+
+    for i in range(1,thoi_han+1):
+
+        lai=du_no*lai_thang
+
+        tong=goc+lai
+
+        tong_lai+=lai
+
+        bang.append([
+            i,
+            round(goc),
+            round(lai),
+            round(tong),
+            round(du_no-goc)
+        ])
+
+        du_no-=goc
+
+    return bang,tong_lai
+
+# ==================================
+# HÀM TRẢ GÓP ĐỀU
+# ==================================
+
+def tra_gop_deu():
+
+    bang=[]
+
+    tien_tra=so_tien*lai_thang*(1+lai_thang)**thoi_han
+    tien_tra/=((1+lai_thang)**thoi_han-1)
+
+    du_no=so_tien
+
+    tong_lai=0
+
+    for i in range(1,thoi_han+1):
+
+        lai=du_no*lai_thang
+
+        goc=tien_tra-lai
+
+        tong_lai+=lai
+
+        bang.append([
+            i,
+            round(goc),
+            round(lai),
+            round(tien_tra),
+            round(du_no-goc)
+        ])
+
+        du_no-=goc
+
+    return bang,tong_lai
+
+# ==================================
+# TÍNH TOÁN
+# ==================================
+
+if st.button("📈 Tính khoản vay"):
+
+    bang_giam,lai_giam=du_no_giam_dan()
+
+    bang_deu,lai_deu=tra_gop_deu()
+
+    # =======================
+
+    col1,col2,col3=st.columns(3)
+
+    col1.metric(
+        "💰 Số tiền vay",
+        f"{so_tien:,.0f} VNĐ"
+    )
+
+    col2.metric(
+        "📅 Thời hạn",
+        f"{thoi_han} tháng"
+    )
+
+    col3.metric(
+        "📈 Lãi suất",
+        f"{lai_suat}%/năm"
+    )
+
+    st.divider()
+
+    # ==========================
+    # BẢNG TRẢ NỢ
+    # ==========================
+
+    st.subheader("📄 Bảng trả nợ")
+
+    phuong_thuc = st.radio(
+        "Chọn phương thức",
+        [
+            "Dư nợ giảm dần",
+            "Trả góp đều"
+        ]
+    )
+
+    if phuong_thuc=="Dư nợ giảm dần":
+
+        df=pd.DataFrame(
+            bang_giam,
+            columns=[
+                "Tháng",
+                "Tiền gốc",
+                "Tiền lãi",
+                "Tổng trả",
+                "Dư nợ"
+            ]
+        )
+
+        tong_lai=lai_giam
+
+    else:
+
+        df=pd.DataFrame(
+            bang_deu,
+            columns=[
+                "Tháng",
+                "Tiền gốc",
+                "Tiền lãi",
+                "Tổng trả",
+                "Dư nợ"
+            ]
+        )
+
+        tong_lai=lai_deu
+
+    st.dataframe(df,use_container_width=True)
+
     st.metric(
-        "💵 Dư nợ giảm dần",
-        f"{tong_lai_giam:,.0f} VNĐ"
+        "💵 Tổng tiền lãi",
+        f"{tong_lai:,.0f} VNĐ"
     )
 
-with col2:
     st.metric(
-        "💳 Trả góp đều",
-        f"{tong_lai_deu:,.0f} VNĐ"
+        "💳 Tổng phải thanh toán",
+        f"{so_tien+tong_lai:,.0f} VNĐ"
     )
 
+    st.divider()
 
-# =============================
-# TƯ VẤN KHÁCH HÀNG
-# =============================
+    # ==================================
+    # SO SÁNH
+    # ==================================
 
-st.subheader("💡 Tư vấn lựa chọn")
+    st.subheader("📊 So sánh hai phương thức")
 
-if tong_lai_giam < tong_lai_deu:
+    ss=pd.DataFrame({
 
-    chenh_lech = tong_lai_deu - tong_lai_giam
+        "Phương thức":[
+            "Dư nợ giảm dần",
+            "Trả góp đều"
+        ],
 
-    st.success(
-        f"""
-✅ **Khuyến nghị:** Nên chọn **Dư nợ giảm dần**
+        "Tổng lãi":[
+            round(lai_giam),
+            round(lai_deu)
+        ],
 
-- Tiết kiệm khoảng **{chenh_lech:,.0f} VNĐ** tiền lãi.
-- Phù hợp với khách hàng có thu nhập ổn định.
-- Tổng chi phí vay thấp hơn.
-"""
+        "Tổng thanh toán":[
+            round(so_tien+lai_giam),
+            round(so_tien+lai_deu)
+        ]
+
+    })
+
+    st.dataframe(ss,use_container_width=True)
+
+    st.bar_chart(
+        ss.set_index("Phương thức")["Tổng lãi"]
     )
 
-else:
+    # ==================================
+    # TƯ VẤN
+    # ==================================
 
-    chenh_lech = tong_lai_giam - tong_lai_deu
+    st.subheader("🤖 Tư vấn phương thức tối ưu")
 
-    st.info(
-        f"""
-✅ **Khuyến nghị:** Nên chọn **Trả góp đều**
+    if lai_giam<lai_deu:
 
-- Tiền trả hàng tháng cố định.
-- Dễ quản lý tài chính cá nhân.
-- Chênh lệch tiền lãi khoảng **{chenh_lech:,.0f} VNĐ**.
-"""
+        st.success(f"""
+
+### ✅ Khuyến nghị
+
+Nên chọn **Dư nợ giảm dần**
+
+✔ Tổng tiền lãi thấp hơn
+
+✔ Tiết kiệm khoảng **{lai_deu-lai_giam:,.0f} VNĐ**
+
+✔ Phù hợp với khách hàng có thu nhập ổn định.
+
+""")
+
+    else:
+
+        st.info(f"""
+
+### ✅ Khuyến nghị
+
+Nên chọn **Trả góp đều**
+
+✔ Tiền trả hàng tháng cố định
+
+✔ Dễ lập kế hoạch tài chính
+
+✔ Chênh lệch tiền lãi khoảng **{lai_giam-lai_deu:,.0f} VNĐ**
+
+""")
+
+    # ==================================
+    # XUẤT EXCEL
+    # ==================================
+
+    excel=df.to_csv(index=False).encode("utf-8-sig")
+
+    st.download_button(
+        "📥 Tải bảng trả nợ",
+        excel,
+        "BangTraNo.csv",
+        "text/csv"
     )
