@@ -1,107 +1,210 @@
-import streamlit as st
-from datetime import date
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Tính Lãi Suất Vay Ngân Hàng</title>
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --bg-color: #f4f7f6;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #004494;
+        }
+        .summary {
+            background: #e9ecef;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+            border-left: 5px solid var(--primary-color);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: right;
+        }
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+        }
+        td:first-child {
+            text-align: center;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
 
-st.set_page_config(
-    page_title="Ứng dụng tính khoản vay",
-    page_icon="💰",
-    layout="centered"
-)
+<div class="container">
+    <h2>Ứng Dụng Tính Tiền Gốc & Lãi Hàng Tháng</h2>
+    
+    <div class="form-group">
+        <label for="purpose">Mục đích vay vốn / Sản phẩm:</label>
+        <select id="purpose">
+            <option value="Vay mua nhà">Vay mua nhà / Bất động sản</option>
+            <option value="Vay mua ô tô">Vay mua ô tô</option>
+            <option value="Vay tiêu dùng">Vay tiêu dùng</option>
+            <option value="Vay sản xuất kinh doanh">Vay sản xuất kinh doanh</option>
+        </select>
+    </div>
 
-st.title("💰 Ứng dụng tính tiền gốc và lãi vay ngân hàng")
+    <div class="form-group">
+        <label for="amount">Số tiền vay (VNĐ):</label>
+        <input type="number" id="amount" placeholder="Ví dụ: 1000000000 (1 tỷ)" min="0">
+    </div>
 
-st.markdown("### Thông tin khoản vay")
+    <div class="form-group">
+        <label for="months">Thời hạn vay (Tháng):</label>
+        <input type="number" id="months" placeholder="Ví dụ: 12, 24, 60..." min="1">
+    </div>
 
-# Mục đích vay vốn
-muc_dich = st.selectbox(
-    "Mục đích vay vốn",
-    [
-        "Mua nhà",
-        "Xây dựng/Sửa chữa nhà",
-        "Mua ô tô",
-        "Tiêu dùng",
-        "Bổ sung vốn kinh doanh",
-        "Du học",
-        "Khác"
-    ]
-)
+    <div class="form-group">
+        <label for="rate">Lãi suất cho vay (%/năm):</label>
+        <input type="number" id="rate" placeholder="Ví dụ: 8.5" step="0.1" min="0">
+    </div>
 
-# Sản phẩm cho vay
-san_pham = st.selectbox(
-    "Sản phẩm cho vay",
-    [
-        "Vay thế chấp",
-        "Vay tín chấp",
-        "Vay mua nhà",
-        "Vay mua ô tô",
-        "Vay kinh doanh",
-        "Vay tiêu dùng"
-    ]
-)
+    <button onclick="calculateLoan()">Tính Toán</button>
 
-# Số tiền vay
-so_tien = st.number_input(
-    "Số tiền vay (VNĐ)",
-    min_value=1000000,
-    step=1000000,
-    value=500000000,
-    format="%d"
-)
+    <div id="result"></div>
+</div>
 
-# Thời hạn vay
-thoi_han = st.number_input(
-    "Thời hạn vay (tháng)",
-    min_value=1,
-    max_value=420,
-    value=120
-)
+<script>
+    function formatVND(number) {
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(number);
+    }
 
-# Lãi suất
-lai_suat = st.number_input(
-    "Lãi suất (%/năm)",
-    min_value=0.0,
-    max_value=30.0,
-    value=8.5,
-    step=0.1
-)
+    function calculateLoan() {
+        const purpose = document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text;
+        const amount = parseFloat(document.getElementById('amount').value);
+        const months = parseInt(document.getElementById('months').value);
+        const rateYearly = parseFloat(document.getElementById('rate').value);
 
-# Phương thức trả nợ
-phuong_thuc = st.selectbox(
-    "Phương thức trả nợ",
-    [
-        "Dư nợ giảm dần",
-        "Trả góp đều (Annuity)",
-        "Trả lãi định kỳ, gốc cuối kỳ"
-    ]
-)
+        if (isNaN(amount) || isNaN(months) || isNaN(rateYearly) || amount <= 0 || months <= 0 || rateYearly < 0) {
+            alert("Vui lòng nhập đầy đủ và chính xác các thông tin bằng số hợp lệ.");
+            return;
+        }
 
-# Ngày giải ngân
-ngay_giai_ngan = st.date_input(
-    "Ngày giải ngân",
-    value=date.today()
-)
+        // Công thức tính toán
+        const principalPerMonth = amount / months;
+        const rateMonthly = (rateYearly / 100) / 12;
+        
+        let remainingBalance = amount;
+        let totalInterest = 0;
+        
+        let tableHTML = `
+            <div class="summary">
+                <strong>Tóm tắt khoản vay:</strong><br>
+                - Mục đích: ${purpose}<br>
+                - Tổng số tiền vay: <span style="color:red; font-weight:bold;">${formatVND(amount)}</span><br>
+                - Phương pháp tính: Gốc trả đều, lãi tính trên dư nợ giảm dần.
+            </div>
+            <table>
+                <tr>
+                    <th>Kỳ (Tháng)</th>
+                    <th>Tiền gốc trả hàng tháng</th>
+                    <th>Tiền lãi phải trả</th>
+                    <th>Tổng tiền phải trả</th>
+                    <th>Dư nợ còn lại</th>
+                </tr>
+        `;
 
-# Ngày thanh toán
-ngay_thanh_toan = st.slider(
-    "Ngày thanh toán hàng tháng",
-    min_value=1,
-    max_value=28,
-    value=5
-)
+        for (let i = 1; i <= months; i++) {
+            // Lãi tháng hiện tại = Dư nợ đầu kỳ * lãi suất tháng
+            let interest = remainingBalance * rateMonthly;
+            totalInterest += interest;
+            
+            // Tổng tiền phải trả tháng này = Gốc + Lãi
+            let totalPayment = principalPerMonth + interest;
+            
+            // Cập nhật dư nợ
+            remainingBalance -= principalPerMonth;
+            
+            // Xử lý sai số thập phân cho tháng cuối cùng
+            if (remainingBalance < 1) remainingBalance = 0;
 
-st.divider()
+            tableHTML += `
+                <tr>
+                    <td>${i}</td>
+                    <td>${formatVND(principalPerMonth)}</td>
+                    <td>${formatVND(interest)}</td>
+                    <td><strong>${formatVND(totalPayment)}</strong></td>
+                    <td>${formatVND(remainingBalance)}</td>
+                </tr>
+            `;
+        }
 
-if st.button("Xác nhận thông tin"):
-    st.success("Đã lưu thông tin khoản vay.")
+        let totalAmountPaid = amount + totalInterest;
 
-    st.subheader("Thông tin đã nhập")
+        tableHTML += `
+            <tr>
+                <td colspan="2" style="text-align:center; font-weight:bold;">TỔNG CỘNG</td>
+                <td style="font-weight:bold; color:red;">${formatVND(totalInterest)}</td>
+                <td style="font-weight:bold; color:blue;">${formatVND(totalAmountPaid)}</td>
+                <td></td>
+            </tr>
+        </table>`;
 
-    st.write(f"**Mục đích vay:** {muc_dich}")
-    st.write(f"**Sản phẩm vay:** {san_pham}")
-    st.write(f"**Số tiền vay:** {so_tien:,.0f} VNĐ")
-    st.write(f"**Thời hạn:** {thoi_han} tháng")
-    st.write(f"**Lãi suất:** {lai_suat:.2f}%/năm")
-    st.write(f"**Phương thức trả nợ:** {phuong_thuc}")
-    st.write(f"**Ngày giải ngân:** {ngay_giai_ngan.strftime('%d/%m/%Y')}")
-    st.write(f"**Ngày thanh toán hàng tháng:** Ngày {ngay_thanh_toan}")
+        document.getElementById('result').innerHTML = tableHTML;
+    }
+</script>
 
-    st.info("👉 Bước tiếp theo: Tính bảng gốc và lãi theo lịch trả nợ.")
+</body>
+</html>
