@@ -1,103 +1,242 @@
-"""
-Loan Advisor - Streamlit Demo
-Run:
-    pip install streamlit pandas plotly
-    streamlit run app.py
-"""
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Loan Advisor", layout="wide")
+st.set_page_config(page_title="Ứng dụng tính khoản vay", layout="wide")
 
-def annuity(P,r,n):
-    rm=r/12/100
-    pay=P*rm*(1+rm)**n/((1+rm)**n-1) if rm else P/n
-    bal=P
-    rows=[]
-    for i in range(1,n+1):
-        interest=bal*rm
-        principal=pay-interest
-        end=max(0,bal-principal)
-        rows.append([i,bal,principal,interest,pay,end])
-        bal=end
-    return pd.DataFrame(rows,columns=["Tháng","Dư nợ đầu kỳ","Gốc","Lãi","Tổng trả","Dư nợ cuối kỳ"])
+st.title("💰 Ứng dụng tính tiền vay ngân hàng")
 
-def declining(P,r,n):
-    rm=r/12/100
-    gp=P/n
-    bal=P
-    rows=[]
-    for i in range(1,n+1):
-        interest=bal*rm
-        total=gp+interest
-        end=max(0,bal-gp)
-        rows.append([i,bal,gp,interest,total,end])
-        bal=end
-    return pd.DataFrame(rows,columns=["Tháng","Dư nợ đầu kỳ","Gốc","Lãi","Tổng trả","Dư nợ cuối kỳ"])
+st.write("### Nhập thông tin khoản vay")
 
-st.title("💰 Loan Advisor")
+#=========================
+# Lãi suất theo mục đích vay
+#=========================
 
-with st.sidebar:
-    st.header("Thông tin khoản vay")
-    purpose=st.selectbox("Mục đích",["Mua nhà","Sửa nhà","Mua ô tô","Tiêu dùng","Kinh doanh"])
-    amount=st.number_input("Số tiền vay",1000000,10000000000,500000000,1000000)
-    years=st.slider("Thời hạn (năm)",1,35,20)
-    rate=st.number_input("Lãi suất %/năm",0.1,30.0,8.0,0.1)
-    method=st.radio("Phương thức",["Trả góp đều","Dư nợ giảm dần"])
+rates = {
+    "Vay mua nhà":8.5,
+    "Vay mua xe":9.2,
+    "Vay kinh doanh":10.5,
+    "Vay tiêu dùng":12
+}
 
-months=years*12
-df=annuity(amount,rate,months) if method=="Trả góp đều" else declining(amount,rate,months)
+col1,col2=st.columns(2)
 
-total_interest=df["Lãi"].sum()
-total_payment=df["Tổng trả"].sum()
+with col1:
+    amount = st.number_input(
+        "Số tiền vay (VNĐ)",
+        min_value=1000000,
+        value=500000000,
+        step=1000000
+    )
 
-c1,c2,c3,c4=st.columns(4)
-c1.metric("Khoản vay",f"{amount:,.0f}")
-c2.metric("Tổng lãi",f"{total_interest:,.0f}")
-c3.metric("Tổng thanh toán",f"{total_payment:,.0f}")
-c4.metric("Tháng đầu",f"{df.iloc[0]['Tổng trả']:,.0f}")
+    months = st.number_input(
+        "Thời hạn vay (tháng)",
+        min_value=1,
+        value=60
+    )
 
-tabs=st.tabs(["Lịch trả nợ","Biểu đồ","So sánh","Đánh giá DSR"])
+with col2:
+    purpose = st.selectbox(
+        "Mục đích vay",
+        list(rates.keys())
+    )
 
-with tabs[0]:
-    st.dataframe(df.style.format("{:,.0f}"))
+    custom = st.checkbox("Nhập lãi suất thủ công")
 
-with tabs[1]:
-    st.plotly_chart(px.line(df,x="Tháng",y="Dư nợ cuối kỳ",title="Dư nợ còn lại"),use_container_width=True)
-    st.plotly_chart(px.bar(df.head(24),x="Tháng",y=["Gốc","Lãi"],barmode="group",title="24 tháng đầu"),use_container_width=True)
+    if custom:
+        annual_rate = st.number_input(
+            "Lãi suất (%/năm)",
+            value=10.0
+        )
+    else:
+        annual_rate = rates[purpose]
 
-with tabs[2]:
-    st.subheader("So sánh phương án")
-    r2=st.number_input("Lãi suất PA2",0.1,30.0,9.0,0.1)
-    y2=st.slider("Thời hạn PA2",1,35,25,key="y2")
-    df2=annuity(amount,r2,y2*12)
-    i1=total_interest
-    i2=df2["Lãi"].sum()
-    comp=pd.DataFrame({
-        "":["PA1","PA2"],
-        "Lãi suất":[rate,r2],
-        "Thời hạn":[years,y2],
-        "Tổng lãi":[i1,i2]
+st.success(f"Lãi suất áp dụng: {annual_rate}%/năm")
+
+monthly_rate = annual_rate/100/12
+
+#=========================
+# DƯ NỢ GIẢM DẦN
+#=========================
+
+goc = amount/months
+remain = amount
+
+schedule1=[]
+
+for m in range(1,months+1):
+
+    lai = remain*monthly_rate
+
+    tong = goc+lai
+
+    remain -= goc
+
+    schedule1.append([
+        m,
+        round(goc),
+        round(lai),
+        round(tong),
+        max(round(remain),0)
+    ])
+
+df1=pd.DataFrame(schedule1,
+columns=[
+"Tháng",
+"Gốc",
+"Lãi",
+"Tổng trả",
+"Dư nợ"
+])
+
+#=========================
+# TRẢ GÓP ĐỀU
+#=========================
+
+remain=amount
+
+payment=amount*monthly_rate*(1+monthly_rate)**months/((1+monthly_rate)**months-1)
+
+schedule2=[]
+
+for m in range(1,months+1):
+
+    lai=remain*monthly_rate
+
+    goc=payment-lai
+
+    remain-=goc
+
+    schedule2.append([
+        m,
+        round(goc),
+        round(lai),
+        round(payment),
+        max(round(remain),0)
+    ])
+
+df2=pd.DataFrame(schedule2,
+columns=[
+"Tháng",
+"Gốc",
+"Lãi",
+"Tổng trả",
+"Dư nợ"
+])
+
+#=========================
+# HIỂN THỊ
+#=========================
+
+tab1,tab2,tab3=st.tabs([
+"Dư nợ giảm dần",
+"Trả góp đều",
+"So sánh"
+])
+
+with tab1:
+
+    st.subheader("Phương thức dư nợ giảm dần")
+
+    st.dataframe(df1,use_container_width=True)
+
+    st.metric(
+        "Tổng tiền lãi",
+        f"{df1['Lãi'].sum():,.0f} VNĐ"
+    )
+
+    st.metric(
+        "Tổng phải trả",
+        f"{df1['Tổng trả'].sum():,.0f} VNĐ"
+    )
+
+with tab2:
+
+    st.subheader("Phương thức trả góp đều")
+
+    st.dataframe(df2,use_container_width=True)
+
+    st.metric(
+        "Tổng tiền lãi",
+        f"{df2['Lãi'].sum():,.0f} VNĐ"
+    )
+
+    st.metric(
+        "Tổng phải trả",
+        f"{df2['Tổng trả'].sum():,.0f} VNĐ"
+    )
+
+with tab3:
+
+    st.subheader("So sánh")
+
+    compare=pd.DataFrame({
+
+        "Phương thức":[
+            "Dư nợ giảm dần",
+            "Trả góp đều"
+        ],
+
+        "Tổng lãi":[
+            df1["Lãi"].sum(),
+            df2["Lãi"].sum()
+        ],
+
+        "Tổng thanh toán":[
+            df1["Tổng trả"].sum(),
+            df2["Tổng trả"].sum()
+        ]
+
     })
-    st.dataframe(comp)
-    if i1<i2:
-        st.success(f"PA1 tiết kiệm hơn {i2-i1:,.0f} đồng tiền lãi.")
-    else:
-        st.info(f"PA2 tiết kiệm hơn {i1-i2:,.0f} đồng tiền lãi.")
 
-with tabs[3]:
-    income=st.number_input("Thu nhập/tháng",1000000,500000000,30000000,1000000)
-    expense=st.number_input("Chi phí sinh hoạt",0,500000000,10000000,1000000)
-    other=st.number_input("Khoản trả nợ khác",0,500000000,0,1000000)
-    monthly=df.iloc[0]["Tổng trả"]
-    dsr=(monthly+other)/income*100
-    st.metric("DSR",f"{dsr:.1f}%")
-    if dsr<40:
-        st.success("🟢 Khả năng trả nợ tốt.")
-    elif dsr<60:
-        st.warning("🟡 Cần cân nhắc.")
+    st.dataframe(compare,use_container_width=True)
+
+    if df1["Lãi"].sum()<df2["Lãi"].sum():
+
+        st.success("""
+### ✅ Tư vấn
+
+**Dư nợ giảm dần** là phương án tối ưu nếu:
+
+- Muốn tiết kiệm chi phí lãi vay.
+- Có khả năng trả nhiều tiền ở những tháng đầu.
+- Tổng số tiền lãi thấp hơn.
+""")
+
     else:
-        st.error("🔴 Rủi ro cao.")
-    affordable=max(0,(income*0.4-other))
-    st.write(f"Gợi ý: Khoản trả nợ nên dưới **{affordable:,.0f} đ/tháng**.")
+
+        st.info("""
+### ✅ Tư vấn
+
+**Trả góp đều** phù hợp nếu:
+
+- Muốn số tiền thanh toán mỗi tháng cố định.
+- Dễ lập kế hoạch tài chính.
+- Thu nhập ổn định.
+""")
+
+#=========================
+# BIỂU ĐỒ
+#=========================
+
+st.subheader("📊 Biểu đồ dư nợ còn lại")
+
+fig,ax=plt.subplots(figsize=(12,5))
+
+ax.bar(df1["Tháng"]-0.2,
+       df1["Dư nợ"],
+       width=0.4,
+       label="Dư nợ giảm dần")
+
+ax.bar(df2["Tháng"]+0.2,
+       df2["Dư nợ"],
+       width=0.4,
+       label="Trả góp đều")
+
+ax.set_xlabel("Tháng")
+
+ax.set_ylabel("Dư nợ còn lại")
+
+ax.legend()
+
+st.pyplot(fig)
