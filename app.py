@@ -1,147 +1,107 @@
 import streamlit as st
-import pandas as pd
+from datetime import date
 
-st.set_page_config(page_title="Ứng dụng tính vay vốn", page_icon="💰")
-
-st.title("💰 Ứng dụng tính khoản vay ngân hàng")
-
-st.write("### Nhập thông tin khoản vay")
-
-# Nhập thông tin
-so_tien = st.number_input(
-    "Số tiền vay (VNĐ)",
-    min_value=1000000,
-    step=1000000,
-    value=100000000
+st.set_page_config(
+    page_title="Ứng dụng tính khoản vay",
+    page_icon="💰",
+    layout="centered"
 )
 
-lai_suat = st.number_input(
-    "Lãi suất (%/năm)",
-    min_value=0.0,
-    value=10.0
-)
+st.title("💰 Ứng dụng tính tiền gốc và lãi vay ngân hàng")
 
-thoi_han = st.number_input(
-    "Thời hạn vay (tháng)",
-    min_value=1,
-    value=12
-)
+st.markdown("### Thông tin khoản vay")
 
+# Mục đích vay vốn
 muc_dich = st.selectbox(
     "Mục đích vay vốn",
     [
         "Mua nhà",
+        "Xây dựng/Sửa chữa nhà",
         "Mua ô tô",
         "Tiêu dùng",
-        "Kinh doanh",
+        "Bổ sung vốn kinh doanh",
         "Du học",
         "Khác"
     ]
 )
 
-phuong_thuc = st.radio(
-    "Phương thức trả nợ",
+# Sản phẩm cho vay
+san_pham = st.selectbox(
+    "Sản phẩm cho vay",
     [
-        "Dư nợ giảm dần",
-        "Trả góp đều"
+        "Vay thế chấp",
+        "Vay tín chấp",
+        "Vay mua nhà",
+        "Vay mua ô tô",
+        "Vay kinh doanh",
+        "Vay tiêu dùng"
     ]
 )
 
-if st.button("Tính toán"):
+# Số tiền vay
+so_tien = st.number_input(
+    "Số tiền vay (VNĐ)",
+    min_value=1000000,
+    step=1000000,
+    value=500000000,
+    format="%d"
+)
 
-    lai_thang = lai_suat / 100 / 12
+# Thời hạn vay
+thoi_han = st.number_input(
+    "Thời hạn vay (tháng)",
+    min_value=1,
+    max_value=420,
+    value=120
+)
 
-    bang = []
+# Lãi suất
+lai_suat = st.number_input(
+    "Lãi suất (%/năm)",
+    min_value=0.0,
+    max_value=30.0,
+    value=8.5,
+    step=0.1
+)
 
-    # ==========================
-    # DƯ NỢ GIẢM DẦN
-    # ==========================
+# Phương thức trả nợ
+phuong_thuc = st.selectbox(
+    "Phương thức trả nợ",
+    [
+        "Dư nợ giảm dần",
+        "Trả góp đều (Annuity)",
+        "Trả lãi định kỳ, gốc cuối kỳ"
+    ]
+)
 
-    if phuong_thuc == "Dư nợ giảm dần":
+# Ngày giải ngân
+ngay_giai_ngan = st.date_input(
+    "Ngày giải ngân",
+    value=date.today()
+)
 
-        goc_thang = so_tien / thoi_han
-        du_no = so_tien
+# Ngày thanh toán
+ngay_thanh_toan = st.slider(
+    "Ngày thanh toán hàng tháng",
+    min_value=1,
+    max_value=28,
+    value=5
+)
 
-        tong_lai = 0
+st.divider()
 
-        for i in range(1, thoi_han + 1):
+if st.button("Xác nhận thông tin"):
+    st.success("Đã lưu thông tin khoản vay.")
 
-            lai = du_no * lai_thang
-            tong = goc_thang + lai
-
-            bang.append([
-                i,
-                round(goc_thang),
-                round(lai),
-                round(tong),
-                round(du_no - goc_thang)
-            ])
-
-            tong_lai += lai
-            du_no -= goc_thang
-
-    # ==========================
-    # TRẢ GÓP ĐỀU
-    # ==========================
-
-    else:
-
-        tien_tra = so_tien * lai_thang * (1 + lai_thang) ** thoi_han
-        tien_tra /= ((1 + lai_thang) ** thoi_han - 1)
-
-        du_no = so_tien
-        tong_lai = 0
-
-        for i in range(1, thoi_han + 1):
-
-            lai = du_no * lai_thang
-            goc = tien_tra - lai
-
-            bang.append([
-                i,
-                round(goc),
-                round(lai),
-                round(tien_tra),
-                round(du_no - goc)
-            ])
-
-            tong_lai += lai
-            du_no -= goc
-
-    df = pd.DataFrame(
-        bang,
-        columns=[
-            "Tháng",
-            "Tiền gốc",
-            "Tiền lãi",
-            "Tổng thanh toán",
-            "Dư nợ còn lại"
-        ]
-    )
-
-    st.success("Đã tính toán thành công!")
-
-    st.write("## Thông tin khoản vay")
+    st.subheader("Thông tin đã nhập")
 
     st.write(f"**Mục đích vay:** {muc_dich}")
+    st.write(f"**Sản phẩm vay:** {san_pham}")
     st.write(f"**Số tiền vay:** {so_tien:,.0f} VNĐ")
-    st.write(f"**Lãi suất:** {lai_suat}%/năm")
     st.write(f"**Thời hạn:** {thoi_han} tháng")
+    st.write(f"**Lãi suất:** {lai_suat:.2f}%/năm")
+    st.write(f"**Phương thức trả nợ:** {phuong_thuc}")
+    st.write(f"**Ngày giải ngân:** {ngay_giai_ngan.strftime('%d/%m/%Y')}")
+    st.write(f"**Ngày thanh toán hàng tháng:** Ngày {ngay_thanh_toan}")
 
-    st.write("## Kết quả")
-
-    st.metric("Tổng tiền lãi", f"{tong_lai:,.0f} VNĐ")
-    st.metric("Tổng phải thanh toán", f"{so_tien + tong_lai:,.0f} VNĐ")
-
-    st.write("## Bảng chi tiết")
-
-    st.dataframe(df, use_container_width=True)
-
-    csv = df.to_csv(index=False).encode("utf-8-sig")
-
-    st.download_button(
-        "📥 Tải bảng trả nợ",
-        csv,
-        file_name="Bang_tra_no.csv",
-        mime="text/csv"
-    )
+    st.info("👉 Bước tiếp theo: Tính bảng gốc và lãi theo lịch trả nợ.")
