@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Ứng dụng tính khoản vay", layout="wide")
 
@@ -240,3 +239,12 @@ ax.set_ylabel("Dư nợ còn lại")
 ax.legend()
 
 st.pyplot(fig)
+st.subheader("📊 Biểu đồ dư nợ còn lại")
+
+chart = pd.DataFrame({
+    "Tháng": df1["Tháng"],
+    "Dư nợ giảm dần": df1["Dư nợ"],
+    "Trả góp đều": df2["Dư nợ"]
+})
+
+st.bar_chart(chart.set_index("Tháng"))
